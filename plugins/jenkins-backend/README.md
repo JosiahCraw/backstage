@@ -154,6 +154,21 @@ jenkins:
       apiKey: 123456789abcdef0123456789abcedf012
 ```
 
+#### Example Multiple Jobs
+
+The following will look for jobs at `https://jenkins-foo.example.com/job/teamA/job/artistLookup-build` and `https://jenkins-foo.example.com/job/teamA/job/artistLookup-postBuild`
+
+Catalog
+
+```yaml
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: artist-lookup
+  annotations:
+    'jenkins.io/job-full-name': teamA/artistLookup-build,teamA/artistLookup-postBuild
+```
+
 ### Custom JenkinsInfoProvider
 
 An example of a bespoke JenkinsInfoProvider which uses an organisation specific annotation to look up the Jenkins info (including jobFullName):

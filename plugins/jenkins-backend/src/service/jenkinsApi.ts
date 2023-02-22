@@ -73,46 +73,47 @@ export class JenkinsApiImpl {
   async getProjects(jenkinsInfo: JenkinsInfo, branches?: string[]) {
     const client = await JenkinsApiImpl.getClient(jenkinsInfo);
     const projects: BackstageProject[] = [];
-
-    if (branches) {
-      // Assume jenkinsInfo.jobFullName is a MultiBranch Pipeline project which contains one job per branch.
-      // TODO: extract a strategy interface for this
-      const job = await Promise.any(
-        branches.map(branch =>
-          client.job.get({
-            name: `${jenkinsInfo.jobFullName}/${branch}`,
-            tree: JenkinsApiImpl.jobTreeSpec.replace(/\s/g, ''),
-          }),
-        ),
-      );
-      projects.push(this.augmentProject(job));
-    } else {
-      // We aren't filtering
-      // Assume jenkinsInfo.jobFullName is either
-      // a MultiBranch Pipeline (folder with one job per branch) project
-      // a Pipeline (standalone) project
-      const project = await client.job.get({
-        name: jenkinsInfo.jobFullName,
-        // Filter only be the information we need, instead of loading all fields.
-        // Limit to only show the latest build for each job and only load 50 jobs
-        // at all.
-        // Whitespaces are only included for readability here and stripped out
-        // before sending to Jenkins
-        tree: JenkinsApiImpl.jobsTreeSpec.replace(/\s/g, ''),
-      });
-
-      const isStandaloneProject = !project.jobs;
-      if (isStandaloneProject) {
-        const standaloneProject = await client.job.get({
-          name: jenkinsInfo.jobFullName,
-          tree: JenkinsApiImpl.jobTreeSpec.replace(/\s/g, ''),
+    for (const jobFullName of jenkinsInfo.jobFullName.split(',')) {
+      if (branches) {
+        // Assume jenkinsInfo.jobFullName is a MultiBranch Pipeline project which contains one job per branch.
+        // TODO: extract a strategy interface for this
+        const job = await Promise.any(
+          branches.map(branch =>
+            client.job.get({
+              name: `${jobFullName}/${branch}`,
+              tree: JenkinsApiImpl.jobTreeSpec.replace(/\s/g, ''),
+            }),
+          ),
+        );
+        projects.push(this.augmentProject(job));
+      } else {
+        // We aren't filtering
+        // Assume jenkinsInfo.jobFullName is either
+        // a MultiBranch Pipeline (folder with one job per branch) project
+        // a Pipeline (standalone) project
+        const project = await client.job.get({
+          name: jobFullName,
+          // Filter only be the information we need, instead of loading all fields.
+          // Limit to only show the latest build for each job and only load 50 jobs
+          // at all.
+          // Whitespaces are only included for readability here and stripped out
+          // before sending to Jenkins
+          tree: JenkinsApiImpl.jobsTreeSpec.replace(/\s/g, ''),
         });
-        projects.push(this.augmentProject(standaloneProject));
-        return projects;
-      }
-      for (const jobDetails of project.jobs) {
-        // for each branch (we assume)
-        projects.push(this.augmentProject(jobDetails));
+
+        const isStandaloneProject = !project.jobs;
+        if (isStandaloneProject) {
+          const standaloneProject = await client.job.get({
+            name: jobFullName,
+            tree: JenkinsApiImpl.jobTreeSpec.replace(/\s/g, ''),
+          });
+          projects.push(this.augmentProject(standaloneProject));
+        } else {
+          for (const jobDetails of project.jobs) {
+            // for each branch (we assume)
+            projects.push(this.augmentProject(jobDetails));
+          }
+        }
       }
     }
     return projects;

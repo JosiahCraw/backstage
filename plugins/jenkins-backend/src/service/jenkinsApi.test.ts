@@ -42,6 +42,11 @@ const jenkinsInfo: JenkinsInfo = {
   headers: { headerName: 'headerValue' },
   jobFullName: 'example-jobName',
 };
+const jenkinsInfoMultipleJobs = {
+  baseUrl: 'https://jenkins.example.com',
+  headers: { headerName: 'headerValue' },
+  jobFullName: 'example-jobName,example-jobName2',
+};
 
 const fakePermissionApi = {
   authorize: jest.fn().mockResolvedValue([
@@ -74,6 +79,24 @@ describe('JenkinsApi', () => {
         number: 7,
       },
     };
+    const projectTwo: JenkinsProject = {
+      actions: [],
+      displayName: 'Example Build',
+      fullDisplayName: 'Example jobName2 » Example Build',
+      fullName: 'example-jobName2/exampleBuild',
+      inQueue: false,
+      lastBuild: {
+        actions: [],
+        timestamp: 1,
+        building: false,
+        duration: 10,
+        result: 'success',
+        displayName: '#7',
+        fullDisplayName: 'Example jobName2 » Example Build #7',
+        url: 'https://jenkins.example.com/job/example-jobName2/job/exampleBuild',
+        number: 7,
+      },
+    };
 
     describe('standalone project', () => {
       it('should return the only build', async () => {
@@ -98,6 +121,60 @@ describe('JenkinsApi', () => {
             displayName: '#7',
             fullDisplayName: 'Example jobName » Example Build #7',
             url: 'https://jenkins.example.com/job/example-jobName/job/exampleBuild',
+            number: 7,
+            status: 'success',
+            source: {},
+          },
+          status: 'success',
+        });
+      });
+
+      it('should return two builds', async () => {
+        mockedJenkinsClient.job.get
+          .mockResolvedValueOnce(project)
+          .mockResolvedValueOnce(project)
+          .mockResolvedValueOnce(project)
+          .mockResolvedValueOnce(projectTwo)
+          .mockResolvedValueOnce(projectTwo);
+        const result = await jenkinsApi.getProjects(jenkinsInfoMultipleJobs);
+        expect(mockedJenkinsClient.job.get).toHaveBeenCalledTimes(6);
+        expect(result).toHaveLength(2);
+        expect(result[0]).toEqual({
+          actions: [],
+          displayName: 'Example Build',
+          fullDisplayName: 'Example jobName » Example Build',
+          fullName: 'example-jobName/exampleBuild',
+          inQueue: false,
+          lastBuild: {
+            actions: [],
+            timestamp: 1,
+            building: false,
+            duration: 10,
+            result: 'success',
+            displayName: '#7',
+            fullDisplayName: 'Example jobName » Example Build #7',
+            url: 'https://jenkins.example.com/job/example-jobName/job/exampleBuild',
+            number: 7,
+            status: 'success',
+            source: {},
+          },
+          status: 'success',
+        });
+        expect(result[1]).toEqual({
+          actions: [],
+          displayName: 'Example Build',
+          fullDisplayName: 'Example jobName2 » Example Build',
+          fullName: 'example-jobName2/exampleBuild',
+          inQueue: false,
+          lastBuild: {
+            actions: [],
+            timestamp: 1,
+            building: false,
+            duration: 10,
+            result: 'success',
+            displayName: '#7',
+            fullDisplayName: 'Example jobName2 » Example Build #7',
+            url: 'https://jenkins.example.com/job/example-jobName2/job/exampleBuild',
             number: 7,
             status: 'success',
             source: {},
